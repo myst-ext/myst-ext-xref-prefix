@@ -117,7 +117,7 @@ describe('crossReferencePrefixTransform', () => {
     crossReferencePrefixTransform(mdast, vfile);
     expect((mdast as any).children[0].children[0].children[0].value).toEqual('Hello ');
   });
-  it('Duplicated figure prefix is removed when spread across multiple nodes', () => {
+  it('Duplicated figure prefix is removed when space is separate node', () => {
     const mdast = u('root', [
       u('paragraph', [
         u('strong', [u('text', 'Hello figure')]),
@@ -137,6 +137,69 @@ describe('crossReferencePrefixTransform', () => {
     ]);
     crossReferencePrefixTransform(mdast, vfile);
     expect((mdast as any).children[0].children[0].children[0].value).toEqual('Hello ');
+  });
+  it('Duplicated figure prefix is not removed when word is spread across multiple nodes', () => {
+    const mdast = u('root', [
+      u('paragraph', [
+        u('text', 'Hello fig'),
+        u('text', 'ure '),
+        u(
+          'crossReference',
+          {
+            identifier: 'my-fig',
+            label: 'my-fig',
+            kind: 'figure',
+            enumerator: '1',
+            resolved: true,
+          },
+          [u('text', 'Figure '), u('text', '1')],
+        ),
+      ]),
+    ]);
+    crossReferencePrefixTransform(mdast, vfile);
+    expect((mdast as any).children[0].children[0].value).toEqual('Hello fig');
+    expect((mdast as any).children[0].children[1].value).toEqual('ure ');
+  });
+  it('Duplicated figure prefix node is deleted if empty', () => {
+    const mdast = u('root', [
+      u('paragraph', [
+        u('text', 'figure '),
+        u(
+          'crossReference',
+          {
+            identifier: 'my-fig',
+            label: 'my-fig',
+            kind: 'figure',
+            enumerator: '1',
+            resolved: true,
+          },
+          [u('text', 'Figure '), u('text', '1')],
+        ),
+      ]),
+    ]);
+    crossReferencePrefixTransform(mdast, vfile);
+    expect((mdast as any).children[0].children[0].type).toEqual('crossReference');
+  });
+  it('Duplicated figure prefix node and space node are deleted if empty', () => {
+    const mdast = u('root', [
+      u('paragraph', [
+        u('text', 'figure'),
+        u('text', ' '),
+        u(
+          'crossReference',
+          {
+            identifier: 'my-fig',
+            label: 'my-fig',
+            kind: 'figure',
+            enumerator: '1',
+            resolved: true,
+          },
+          [u('text', 'Figure '), u('text', '1')],
+        ),
+      ]),
+    ]);
+    crossReferencePrefixTransform(mdast, vfile);
+    expect((mdast as any).children[0].children[0].type).toEqual('crossReference');
   });
   it('Duplicated figure prefix is not removed from code', () => {
     const mdast = u('root', [

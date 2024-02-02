@@ -2,6 +2,7 @@ import type { Plugin } from 'unified';
 import { fileInfo, toText } from 'myst-common';
 import type { GenericNode, GenericParent } from 'myst-common';
 import { findBefore } from 'unist-util-find-before';
+import { remove } from 'unist-util-remove';
 import { select, selectAll } from 'unist-util-select';
 import type { VFile } from 'vfile';
 
@@ -12,9 +13,9 @@ import type { VFile } from 'vfile';
  * Fig, Figs, figure, figures, fig., figs. (all case insensitive)
  */
 const XREF_PREFIX_RE: Record<string, string> = {
-  figure: 'fig(s|(ures{0,1})|(s{0,1}\\.)){0,1} {0,2}$',
-  equation: 'eq(s|(ns{0,1})|(uations{0,1})|(n{0,1}s{0,1}\\.)){0,1} {0,2}$',
-  heading: 'sections{0,1} {0,2}$',
+  figure: 'fig(s|(ures{0,1})|(s{0,1}\\.)){0,1} {0,1}$',
+  equation: 'eq(s|(ns{0,1})|(uations{0,1})|(n{0,1}s{0,1}\\.)){0,1} {0,1}$',
+  heading: 'sections{0,1} {0,1}$',
 };
 XREF_PREFIX_RE.subequation = XREF_PREFIX_RE.equation;
 
@@ -24,7 +25,7 @@ XREF_PREFIX_RE.subequation = XREF_PREFIX_RE.equation;
  * For example, with table cross references:
  * table and tables
  */
-const XREF_PREFIX_RE_NO_KIND = 's{0,1} {0,2}$';
+const XREF_PREFIX_RE_NO_KIND = 's{0,1} {0,1}$';
 
 /**
  * Prefix text will only be removed if cross reference text starts with the equivalent
@@ -72,22 +73,35 @@ export function crossReferencePrefixTransform(mdast: GenericParent, vfile: VFile
       if (previousNode?.children) {
         previousNode = select(':last-child', previousNode) as GenericNode;
       }
-      // If it is text and ends with an unwanted cross reference prefix, remove the prefix
       if (previousNode?.type !== 'text' || !previousNode.value) return;
+      // If this node is just a space, find the next one (this happens with, like: "_figure_ [](#my-fig)")
+      let spaceNode: GenericNode | undefined;
+      if (previousNode.value === ' ') {
+        spaceNode = previousNode;
+        previousNode = findBefore(paragraph, spaceNode);
+        if (previousNode?.children) {
+          previousNode = select(':last-child', previousNode) as GenericNode;
+        }
+        if (previousNode?.type !== 'text' || !previousNode.value) return;
+      }
+      // If it is text and ends with an unwanted cross reference prefix, remove the prefix
       const regex = new RegExp(xrefPrefix, 'gi');
       if (regex.exec(previousNode.value)) {
         const messageIndex = previousNode.value.length < 30 ? 0 : previousNode.value.length - 30;
         const messageXref = `[${toText(xref)}]` + (xref.identifier ? `(${xref.identifier})` : '');
-        const before = `${previousNode.value.slice(messageIndex)}${messageXref}`;
+        const before = `${previousNode.value.slice(messageIndex)}${spaceNode ? ' ' : ''}${messageXref}`;
         previousNode.value = previousNode.value.replace(regex, '');
         const after = `${previousNode.value.slice(messageIndex)}${messageXref}`;
         fileInfo(
           vfile,
           `Rewrote cross-reference prefix:\n    Before: ...${before}\n    After:  ...${after}`,
         );
+        if (spaceNode) spaceNode.type = '__delete__';
+        if (!previousNode.value) previousNode.type = '__delete__';
       }
     });
   });
+  remove(mdast, '__delete__');
 }
 
 export const crossReferencePrefixPlugin: Plugin<[], GenericParent, GenericParent> =

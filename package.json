@@ -22,6 +22,7 @@
     "myst-common": "^1.1.22",
     "unified": "^10.0.0",
     "unist-util-find-before": "^4.0.0",
+    "unist-util-remove": "^4.0.0",
     "unist-util-select": "^4.0.3",
     "vfile": "^5.0.0"
   },
