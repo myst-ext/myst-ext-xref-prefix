@@ -117,6 +117,27 @@ describe('crossReferencePrefixTransform', () => {
     crossReferencePrefixTransform(mdast, vfile);
     expect((mdast as any).children[0].children[0].children[0].value).toEqual('Hello ');
   });
+  it('Duplicated figure prefix is removed when spread across multiple nodes', () => {
+    const mdast = u('root', [
+      u('paragraph', [
+        u('strong', [u('text', 'Hello figure')]),
+        u('text', ' '),
+        u(
+          'crossReference',
+          {
+            identifier: 'my-fig',
+            label: 'my-fig',
+            kind: 'figure',
+            enumerator: '1',
+            resolved: true,
+          },
+          [u('text', 'Figure '), u('text', '1')],
+        ),
+      ]),
+    ]);
+    crossReferencePrefixTransform(mdast, vfile);
+    expect((mdast as any).children[0].children[0].children[0].value).toEqual('Hello ');
+  });
   it('Duplicated figure prefix is not removed from code', () => {
     const mdast = u('root', [
       u('paragraph', [
