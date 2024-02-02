@@ -41,6 +41,13 @@ const ALT_XREF_START: Record<string, string> = {
 };
 ALT_XREF_START.subequation = ALT_XREF_START.equation;
 
+const XREF_NUMBER_ONLY_RE = '^[0-9]+[a-z0-9\\.]*$';
+
+enum Action {
+  move = 'move',
+  trim = 'trim',
+}
+
 /**
  * Traverse mdast tree and remove any redundant text before cross references
  *
@@ -63,11 +70,19 @@ export function crossReferencePrefixTransform(mdast: GenericParent, vfile: VFile
       const xrefPrefix = XREF_PREFIX_RE[kind] ?? `${kind}${XREF_PREFIX_RE_NO_KIND}`;
       const xrefStart = kind === 'subequation' ? 'eq' : kind.slice(0, 2);
       const altXrefStart = ALT_XREF_START[kind];
-      const xrefText = select('text', xref) as GenericNode;
-      if (!xrefPrefix || !xrefStart || !xrefText.value) return;
+      const xrefText = toText(xref);
+      if (!xrefPrefix || !xrefStart || !xrefText) return;
       // First see if xref has placeholder text we don't want duplicated
-      const lowerXrefValue = xrefText.value.toLowerCase();
-      if (!lowerXrefValue.startsWith(xrefStart) && !lowerXrefValue.startsWith(altXrefStart)) return;
+      const lowerXrefText = xrefText.toLowerCase();
+      const numberRegex = new RegExp(XREF_NUMBER_ONLY_RE, 'gi');
+      let action: Action;
+      if (lowerXrefText.startsWith(xrefStart) || lowerXrefText.startsWith(altXrefStart)) {
+        action = Action.trim;
+      } else if (numberRegex.exec(lowerXrefText)) {
+        action = Action.move;
+      } else {
+        return;
+      }
       // Then find the last node before the cross reference
       let previousNode = findBefore(paragraph, xref);
       if (previousNode?.children) {
@@ -86,12 +101,20 @@ export function crossReferencePrefixTransform(mdast: GenericParent, vfile: VFile
       }
       // If it is text and ends with an unwanted cross reference prefix, remove the prefix
       const regex = new RegExp(xrefPrefix, 'gi');
-      if (regex.exec(previousNode.value)) {
+      const match = regex.exec(previousNode.value);
+      if (match) {
         const messageIndex = previousNode.value.length < 30 ? 0 : previousNode.value.length - 30;
-        const messageXref = `[${toText(xref)}]` + (xref.identifier ? `(${xref.identifier})` : '');
-        const before = `${previousNode.value.slice(messageIndex)}${spaceNode ? ' ' : ''}${messageXref}`;
+        const beforeXref = `[${toText(xref)}]` + (xref.identifier ? `(${xref.identifier})` : '');
+        const before = `${previousNode.value.slice(messageIndex)}${spaceNode ? ' ' : ''}${beforeXref}`;
+        if (action === Action.move) {
+          xref.children = [
+            { type: 'text', value: `${match[0]}${spaceNode ? ' ' : ''}` },
+            ...xref.children,
+          ];
+        }
         previousNode.value = previousNode.value.replace(regex, '');
-        const after = `${previousNode.value.slice(messageIndex)}${messageXref}`;
+        const afterXref = `[${toText(xref)}]` + (xref.identifier ? `(${xref.identifier})` : '');
+        const after = `${previousNode.value.slice(messageIndex)}${afterXref}`;
         fileInfo(
           vfile,
           `Rewrote cross-reference prefix:\n    Before: ...${before}\n    After:  ...${after}`,

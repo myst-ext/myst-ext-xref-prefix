@@ -221,4 +221,50 @@ describe('crossReferencePrefixTransform', () => {
     crossReferencePrefixTransform(mdast, vfile);
     expect((mdast as any).children[0].children[0].value).toEqual('Hello figure ');
   });
+  it('Figure prefix is added to number-only xref', () => {
+    const mdast = u('root', [
+      u('paragraph', [
+        u('strong', [u('text', 'Hello figure ')]),
+        u(
+          'crossReference',
+          {
+            identifier: 'my-fig',
+            label: 'my-fig',
+            kind: 'figure',
+            enumerator: '1',
+            resolved: true,
+          },
+          [u('text', '1')],
+        ),
+      ]),
+    ]);
+    crossReferencePrefixTransform(mdast, vfile);
+    expect((mdast as any).children[0].children[0].children[0].value).toEqual('Hello ');
+    expect((mdast as any).children[0].children[1].children[0].value).toEqual('figure ');
+    expect((mdast as any).children[0].children[1].children[1].value).toEqual('1');
+  });
+  it('Figure prefix is added to number/letter/period-only xref', () => {
+    const mdast = u('root', [
+      u('paragraph', [
+        u('strong', [u('text', 'Hello eq ')]),
+        u(
+          'crossReference',
+          {
+            identifier: 'my-fig',
+            label: 'my-fig',
+            kind: 'subequation',
+            enumerator: '1',
+            resolved: true,
+          },
+          [u('text', '1'), u('text', 'a'), u('text', '.5')],
+        ),
+      ]),
+    ]);
+    crossReferencePrefixTransform(mdast, vfile);
+    expect((mdast as any).children[0].children[0].children[0].value).toEqual('Hello ');
+    expect((mdast as any).children[0].children[1].children[0].value).toEqual('eq ');
+    expect((mdast as any).children[0].children[1].children[1].value).toEqual('1');
+    expect((mdast as any).children[0].children[1].children[2].value).toEqual('a');
+    expect((mdast as any).children[0].children[1].children[3].value).toEqual('.5');
+  });
 });
