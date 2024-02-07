@@ -1,4 +1,4 @@
-# xref-prefix-plugin
+# myst-ext-xref-prefix
 
 MyST plugin for fixing cross-references where both the text and the cross-reference say "Figure" - this happens often with LaTeX autorefs.
 

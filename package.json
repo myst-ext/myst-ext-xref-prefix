@@ -1,5 +1,5 @@
 {
-  "name": "xref-prefix-plugin",
+  "name": "myst-ext-xref-prefix",
   "version": "0.0.0",
   "sideEffects": false,
   "type": "module",
