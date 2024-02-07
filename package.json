@@ -1,6 +1,6 @@
 {
   "name": "myst-ext-xref-prefix",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "sideEffects": false,
   "type": "module",
   "exports": "./dist/index.js",
@@ -10,6 +10,7 @@
   ],
   "license": "MIT",
   "scripts": {
+    "prepublishOnly": "npm test && npm run build",
     "clean": "rimraf dist",
     "test": "vitest run",
     "test:watch": "vitest watch",
